@@ -21,10 +21,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  quoteDelayLabel,
-  type BtcQuoteStatus,
-} from "@/lib/btc-quote";
+import { dateLocale } from "@/i18n/config";
+import { type BtcQuoteStatus } from "@/lib/btc-quote";
+import { useLocale, useTranslations } from "next-intl";
 import * as React from "react";
 import {
   Area,
@@ -38,11 +37,30 @@ import {
 type ChartDataPoint = { date: string; price: number };
 
 const timeRangeOptions = [
-  { label: "Last 7 Days", value: "7" },
-  { label: "Last 30 Days", value: "30" },
-  { label: "Last 3 Months", value: "90" },
-  { label: "Last Year", value: "365" },
-];
+  { labelKey: "last7Days", value: "7" },
+  { labelKey: "last30Days", value: "30" },
+  { labelKey: "last3Months", value: "90" },
+  { labelKey: "lastYear", value: "365" },
+] as const;
+
+function quoteStatusLabel(
+  status: BtcQuoteStatus,
+  delayed: string,
+  unavailable: string
+): string | null {
+  switch (status) {
+    case "fresh":
+      return null;
+    case "stale":
+      return delayed;
+    case "unavailable":
+      return unavailable;
+    default: {
+      const exhaustive: never = status;
+      return exhaustive;
+    }
+  }
+}
 
 function chartStatus(value: unknown): BtcQuoteStatus | null {
   if (value === "fresh" || value === "stale" || value === "unavailable") {
@@ -52,6 +70,9 @@ function chartStatus(value: unknown): BtcQuoteStatus | null {
 }
 
 export function BtcPriceChart() {
+  const t = useTranslations("chart");
+  const tQuote = useTranslations("quote");
+  const locale = useLocale();
   const [data, setData] = React.useState<ChartDataPoint[]>([]);
   const [loadedRange, setLoadedRange] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -146,33 +167,41 @@ export function BtcPriceChart() {
     : "hsl(var(--chart-negative))";
   const fillColorId = isPositiveChange ? "fillPositive" : "fillNegative";
   const showSkeleton = isLoading && loadedRange !== timeRange;
-  const delayLabel = quoteDelayLabel(quoteStatus);
+  const delayLabel = quoteStatusLabel(
+    quoteStatus,
+    tQuote("priceDelayed"),
+    tQuote("priceUnavailable")
+  );
+  const chartDateLocale = dateLocale(locale);
 
   return (
     <Card>
       <CardHeader className="flex flex-col items-start gap-4 space-y-0 border-b py-5 sm:flex-row sm:items-center sm:gap-6">
         <div className="grid flex-1 gap-1">
           <CardTitle className="flex items-center gap-2">
-            Bitcoin Price
+            {t("title")}
             {delayLabel ? <Badge variant="outline">{delayLabel}</Badge> : null}
           </CardTitle>
           <CardDescription>
             {data.length === 0
-              ? "Chart unavailable"
-              : `${isPositiveChange ? "Increased" : "Decreased"} by $${priceChange.value.toFixed(2)} (${priceChange.percent.toFixed(2)}%)`}
+              ? t("unavailable")
+              : t(isPositiveChange ? "increased" : "decreased", {
+                  amount: priceChange.value.toFixed(2),
+                  percent: priceChange.percent.toFixed(2),
+                })}
           </CardDescription>
         </div>
         <Select value={timeRange} onValueChange={setTimeRange}>
           <SelectTrigger
             className="w-[160px] rounded-lg sm:ml-auto"
-            aria-label="Select a value"
+            aria-label={t("selectValue")}
           >
-            <SelectValue placeholder="Select time range" />
+            <SelectValue placeholder={t("selectRange")} />
           </SelectTrigger>
           <SelectContent className="rounded-xl">
-            {timeRangeOptions.map(({ label, value }) => (
+            {timeRangeOptions.map(({ labelKey, value }) => (
               <SelectItem key={value} value={value} className="rounded-lg">
-                {label}
+                {t(labelKey)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -183,7 +212,7 @@ export function BtcPriceChart() {
           <Skeleton className="h-[250px] w-full" />
         ) : data.length === 0 ? (
           <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
-            Chart unavailable
+            {t("unavailable")}
           </div>
         ) : (
           <ChartContainer config={{}} className="aspect-auto h-[250px] w-full">
@@ -224,7 +253,7 @@ export function BtcPriceChart() {
                 axisLine={false}
                 tickMargin={8}
                 tickFormatter={(value) =>
-                  new Date(value).toLocaleDateString("en-US", {
+                  new Date(value).toLocaleDateString(chartDateLocale, {
                     month: "short",
                     day: "numeric",
                   })
