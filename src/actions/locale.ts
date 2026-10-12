@@ -31,7 +31,11 @@ export async function syncLocaleCookie() {
   });
   if (!user) return;
 
-  await writeLocaleCookie(isLocale(user.locale) ? user.locale : "en");
+  const locale = isLocale(user.locale) ? user.locale : "en";
+  const cookieStore = await cookies();
+  if (cookieStore.get(LOCALE_COOKIE)?.value === locale) return;
+
+  await writeLocaleCookie(locale);
 }
 
 export async function updateLocale(locale: string) {
