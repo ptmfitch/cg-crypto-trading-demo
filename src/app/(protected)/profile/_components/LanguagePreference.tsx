@@ -43,7 +43,7 @@ export function LanguagePreference({ locale }: { locale: Locale }) {
           toast.error(t("languageError"));
           return;
         }
-        toast.success(t("languageSaved"));
+        toast.success(result.message);
         router.refresh();
       } catch {
         setValue(previous);

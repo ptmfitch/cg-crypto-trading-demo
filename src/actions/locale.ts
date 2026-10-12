@@ -9,6 +9,7 @@ import {
 } from "@/i18n/config";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { cookies } from "next/headers";
 
 async function writeLocaleCookie(locale: Locale) {
@@ -51,7 +52,9 @@ export async function updateLocale(locale: string) {
     });
     await writeLocaleCookie(locale);
     revalidatePath("/", "layout");
-    return { ok: true as const };
+    // Read after the user row is updated so the confirmation uses the new locale.
+    const t = await getTranslations("profile");
+    return { ok: true as const, message: t("languageSaved") };
   } catch {
     return { ok: false as const };
   }
