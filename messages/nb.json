@@ -126,7 +126,7 @@
   "profile": {
     "title": "Resultatrapport",
     "subtitle": "En grundig oversikt over handelshistorikken og resultatene dine.",
-    "chartTitle": "Resultadiagram",
+    "chartTitle": "Resultatdiagram",
     "chartEmpty": "Gjør minst to handler for å se resultatdiagrammet.",
     "portfolioPerformance": "Porteføljeresultat",
     "portfolioDescription": "Porteføljens gevinst og tap over tid.",
