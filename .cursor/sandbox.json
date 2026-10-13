@@ -1,6 +1,0 @@
-{
-  "networkPolicy": {
-    "allow": ["libraries.cgr.dev", "*.cgr.dev"],
-    "deny": ["*.npmjs.org", "*.npmjs.com", "*.yarnpkg.com"]
-  }
-}
