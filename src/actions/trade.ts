@@ -1,11 +1,12 @@
 "use server";
 
 import { auth } from "@/auth";
-import { assertTradableQuote } from "@/lib/btc-quote";
 import { getBtcQuote } from "@/lib/btc-market";
+import { assertTradableQuote, TRADE_PAUSED_ERROR } from "@/lib/btc-quote";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { z } from "zod";
 
 const TradeSchema = z.object({
@@ -14,23 +15,48 @@ const TradeSchema = z.object({
   asset: z.enum(["USDT", "BTC"]),
 });
 
+function translateTradeError(
+  code: string,
+  t: Awaited<ReturnType<typeof getTranslations>>,
+  quote: Awaited<ReturnType<typeof getTranslations>>
+) {
+  switch (code) {
+    case "Not authenticated":
+      return t("notAuthenticated");
+    case "Invalid input":
+      return t("invalidInput");
+    case "Wallet not found.":
+      return t("walletNotFound");
+    case "Insufficient USDT balance.":
+      return t("insufficientUsdt");
+    case "Insufficient BTC balance.":
+      return t("insufficientBtc");
+    case TRADE_PAUSED_ERROR:
+      return quote("tradingPaused");
+    default:
+      return t("failed");
+  }
+}
+
 export async function executeTrade(values: z.infer<typeof TradeSchema>) {
+  const t = await getTranslations("trade");
+  const tQuote = await getTranslations("quote");
   const session = await auth();
   if (!session?.user?.id) {
-    return { error: "Not authenticated" };
+    return { error: translateTradeError("Not authenticated", t, tQuote) };
   }
   const userId = session.user.id;
 
   const validatedFields = TradeSchema.safeParse(values);
   if (!validatedFields.success) {
-    return { error: "Invalid input" };
+    return { error: translateTradeError("Invalid input", t, tQuote) };
   }
 
   const { amount, tradeType, asset } = validatedFields.data;
 
   const tradable = assertTradableQuote(await getBtcQuote());
   if (!tradable.ok) {
-    return { error: tradable.error };
+    return { error: translateTradeError(tradable.error, t, tQuote) };
   }
   const liveBtcPrice = new Prisma.Decimal(tradable.usd);
 
@@ -86,9 +112,11 @@ export async function executeTrade(values: z.infer<typeof TradeSchema>) {
       const usdtDisplay = usdtAmount.toDP(2);
 
       return {
-        message: `Successfully ${
-          tradeType === "BUY" ? "bought" : "sold"
-        } ${btcDisplay} BTC for $${usdtDisplay}`,
+        message: t("success", {
+          action: tradeType === "BUY" ? t("bought") : t("sold"),
+          btc: btcDisplay.toString(),
+          usdt: usdtDisplay.toString(),
+        }),
       };
     });
 
@@ -96,10 +124,8 @@ export async function executeTrade(values: z.infer<typeof TradeSchema>) {
     revalidatePath("/profile");
     return { success: result.message };
   } catch (error) {
-    let message = "Trade failed.";
-    if (error instanceof Error && error.message) {
-      message = error.message;
-    }
-    return { error: message };
+    const code =
+      error instanceof Error && error.message ? error.message : "Trade failed.";
+    return { error: translateTradeError(code, t, tQuote) };
   }
 }
