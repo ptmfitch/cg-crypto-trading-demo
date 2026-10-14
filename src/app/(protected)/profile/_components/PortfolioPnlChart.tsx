@@ -13,6 +13,8 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { dateLocale } from "@/i18n/locale";
+import { useLocale, useTranslations } from "next-intl";
 import {
   Area,
   AreaChart,
@@ -27,14 +29,15 @@ export type PnlDataPoint = {
   pnl: number;
 };
 
-const chartConfig = {
-  pnl: {
-    label: "P&L",
-    color: "hsl(var(--chart-1))",
-  },
-} satisfies ChartConfig;
-
 export function PortfolioPnlChart({ data }: { data: PnlDataPoint[] }) {
+  const t = useTranslations("profile");
+  const locale = useLocale();
+  const chartConfig = {
+    pnl: {
+      label: t("pnl"),
+      color: "hsl(var(--chart-1))",
+    },
+  } satisfies ChartConfig;
   const isLoss = data.length > 0 && data[data.length - 1].pnl < 0;
   // Conditionally set the colors based on performance
   const strokeColor = isLoss
@@ -45,10 +48,8 @@ export function PortfolioPnlChart({ data }: { data: PnlDataPoint[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Portfolio Performance</CardTitle>
-        <CardDescription>
-          Your portfolio&apos;s profit and loss over time.
-        </CardDescription>
+        <CardTitle>{t("performanceTitle")}</CardTitle>
+        <CardDescription>{t("performanceDescription")}</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer
@@ -95,7 +96,7 @@ export function PortfolioPnlChart({ data }: { data: PnlDataPoint[] }) {
               tick={{ fill: `hsl(var(--muted-foreground))` }}
               tickFormatter={(value) => {
                 const date = new Date(value);
-                return date.toLocaleDateString("en-US", {
+                return date.toLocaleDateString(dateLocale(locale), {
                   month: "short",
                   day: "numeric",
                 });
@@ -117,7 +118,7 @@ export function PortfolioPnlChart({ data }: { data: PnlDataPoint[] }) {
                   }
                   formatter={(value) => [
                     `$${Number(value).toLocaleString()}`,
-                    "P&L",
+                    t("pnl"),
                   ]}
                 />
               }
