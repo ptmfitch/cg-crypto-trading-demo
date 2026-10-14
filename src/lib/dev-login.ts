@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import prisma from "./prisma";
 
 export type TestAccount = {
@@ -28,10 +29,6 @@ function formatBtc(value: { toString(): string } | null | undefined) {
   }).format(amount);
 }
 
-function tradeLabel(count: number) {
-  return count === 1 ? "1 trade" : `${count} trades`;
-}
-
 export async function listTestAccounts(): Promise<TestAccount[]> {
   if (!isDevLoginEnabled()) {
     return [];
@@ -48,9 +45,19 @@ export async function listTestAccounts(): Promise<TestAccount[]> {
     },
   });
 
-  return users.map((user) => ({
-    email: user.email,
-    name: user.name?.trim() || "Unnamed account",
-    summary: `${formatUsd(user.wallet?.usdtBalance)} cash · ${formatBtc(user.wallet?.btcBalance)} BTC · ${tradeLabel(user._count.trades)}`,
-  }));
+  const t = await getTranslations("devLogin");
+
+  return users.map((user) => {
+    const count = user._count.trades;
+    const trades = count === 1 ? t("oneTrade") : t("manyTrades", { count });
+    return {
+      email: user.email,
+      name: user.name?.trim() || t("unnamed"),
+      summary: t("cashSummary", {
+        cash: formatUsd(user.wallet?.usdtBalance),
+        btc: formatBtc(user.wallet?.btcBalance),
+        trades,
+      }),
+    };
+  });
 }
